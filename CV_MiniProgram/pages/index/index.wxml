@@ -1,0 +1,9 @@
+<view>
+  <input bindinput="change_ip" value="127.0.0.1:8000" placeholder="IP" />
+  <button bindtap="upload">上传</button>
+</view>
+<view wx:if="{{is_res_img==1}}">
+  识别结果：
+  <image src="{{res_img}}"></image>
+  花费时间：{{totaltime}}
+</view>
