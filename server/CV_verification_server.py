@@ -4,6 +4,7 @@ import random
 import sys
 import threading
 import time
+import signal
 
 import cv2
 import numpy as np
@@ -20,7 +21,7 @@ from tornado.httpserver import HTTPServer
 
 INPUT_W = 416
 INPUT_H = 416
-CONF_THRESH = 0.5
+CONF_THRESH = 0.4
 IOU_THRESHOLD = 0.4
 
 def plot_one_box(x, img, color=None, label=None, line_thickness=None):
@@ -150,6 +151,7 @@ class YoLov5TRT(object):
             plot_one_box(
                 box,
                 image_raw,
+                color=[0,0,255] if categories[int(result_classid[i])]=="red" else [255,0,0],
                 label="{}:{:.2f}".format(
                     categories[int(result_classid[i])], result_scores[i]
                 ),
@@ -295,7 +297,7 @@ class IndexHandler(tornado.web.RequestHandler):
             self.write({"errcode":1})
 
 class MainHandler(tornado.web.RequestHandler):
-    
+    is_engine_loaded = 0
     # a  YoLov5TRT instance
 
     # input_image_paths = ["zidane.jpg", "bus.jpg"]
@@ -309,7 +311,14 @@ class MainHandler(tornado.web.RequestHandler):
     # destory the instance
     # yolov5_wrapper.destory()
 
-    # def get(self):
+    def get(self):
+        if self.get_argument('destory') == '1':
+            if self.is_engine_loaded:
+                self.yolov5_wrapper.destory()
+            self.write(tornado.escape.json_encode({
+                'errcode': 0
+            }))
+            print("destory wrapper")
 
         
     def post(self, *args, **kwargs):
@@ -337,11 +346,15 @@ class MainHandler(tornado.web.RequestHandler):
             }))
             print("Error: ",e)
         else:
-            yolov5_wrapper = YoLov5TRT(engine_file_path)
-            thread1 = myThread(yolov5_wrapper.infer, [save_path])
+            if not self.is_engine_loaded:
+                self.yolov5_wrapper = YoLov5TRT(engine_file_path)
+                self.is_engine_loaded = 1
+            
+            thread1 = myThread(self.yolov5_wrapper.infer, [save_path])
+            thread1.setDaemon(True)
             thread1.start()
             thread1.join()
-            yolov5_wrapper.destory()
+            # yolov5_wrapper.destory()
             output_path = os.path.join(path, "output_" + file_info['filename'])
             output_img = open(output_path,'rb')
             output_img_base64 = base64.b64encode(output_img.read())
@@ -352,16 +365,21 @@ app = tornado.web.Application([
     (r"/index", IndexHandler),
     (r"/main", MainHandler)
 ])
-
-
-
-
+# def quit(signum, frame):
+#     print 'You choose to stop me.'
+#     sys.exit()
 
 
 if __name__ == "__main__":
+    # try:
+    #     signal.signal(signal.SIGINT, quit)
+    #     signal.signal(signal.SIGTERM, quit)
+
     PLUGIN_LIBRARY = "build/libmyplugins.so"
     ctypes.CDLL(PLUGIN_LIBRARY)
     engine_file_path = "build/yolov5m.engine"
     categories = ["red","blue"]
     app.listen(8000)
     tornado.ioloop.IOLoop.instance().start()
+    # except Exception, exc:
+    #     print exc

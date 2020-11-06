@@ -41,5 +41,22 @@ Page({
         })
       }
     })
+  },
+  destory(){
+    let that = this
+    wx.request({
+      url: 'http://'+that.data.ip+'/main',
+      method:"GET",
+      data:{
+        destory:1
+      },
+      success(res){
+        if(res.data.errcode=="0"){
+          wx.showToast({
+            title: '成功销毁',
+          })
+        }
+      }
+    })
   }
 })

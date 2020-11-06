@@ -1,6 +1,7 @@
 <view>
   <input bindinput="change_ip" value="127.0.0.1:8000" placeholder="IP" />
   <button bindtap="upload">上传</button>
+  <button bindtap="destory">销毁推理引擎</button>
 </view>
 <view wx:if="{{is_res_img==1}}">
   识别结果：
